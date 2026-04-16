@@ -35,6 +35,27 @@
  *     Date | Round | Winner | Learner |
  *     Winner Sets | Learner Sets | Winner Games | Learner Games |
  *     Score | Format | Submitted At
+ *
+ * ── Manual double-check tab (auto-created) ─────────────────
+ *   "<Ladder Name> - Manual" — a round-by-round spreadsheet view
+ *   for sanity-checking the app's standings. Every cell is a
+ *   live formula pulling from the Matches tab — no manual entry.
+ *
+ *   This app is currently pro-set / games-only. Layout:
+ *     Rank | Player | Games Win % |
+ *     R1 Games W | R1 Games L | ... (×rounds) |
+ *     Total Games W | Total Games L
+ *
+ *   NOTE: `doPost` still records Winner Sets / Learner Sets in
+ *   the Matches tab, and `calculateStandings` still supports
+ *   best-of-3 sort logic. That back-end support is dormant but
+ *   intentionally preserved in case this codebase is ever
+ *   repurposed for a doubles/best-of-3 ladder in the future.
+ *
+ *   Created automatically the first time a match is logged
+ *   for a ladder. If you add/remove players in the Ladders
+ *   config, run `setupAllManualWorksheets` from the editor
+ *   to rebuild every manual tab.
  */
 
 // ═══════════════════════════════════════════════════════════
@@ -221,6 +242,9 @@ function doPost(e) {
       new Date().toISOString()
     ]);
 
+    // Keep the manual double-check tab in sync (cheap if it already exists)
+    try { ensureManualSheet(data.ladder); } catch (e) { /* non-fatal */ }
+
     return jsonOut({ status: 'ok' });
 
   } catch (err) {
@@ -362,6 +386,9 @@ function calculateStandings(ladderName) {
     });
   }
 
+  // Ensure the manual double-check tab exists (cheap if already present)
+  try { ensureManualSheet(ladderName); } catch (e) { /* non-fatal */ }
+
   // Matchups: #1 vs #2, #3 vs #4, ...
   var matchups = [];
   for (var m = 0; m < standings.length - 1; m += 2) {
@@ -386,4 +413,158 @@ function calculateStandings(ladderName) {
     matchups: matchups,
     recent: recentMatches
   };
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MANUAL WORKSHEET — auto-populated double-check tab
+//  Mirrors the old "2025 Doubles CC Men's Ladder Standings"
+//  CSV layout: Rank | Player | Sets Win % | Games Win % |
+//  Rn Sets W | Rn Sets L | Rn Games W | Rn Games L (×rounds) |
+//  Total Sets W | Total Sets L | Total Games W | Total Games L
+//
+//  Every cell except the Player column is a live formula that
+//  reads from the "<Ladder> - Matches" tab. Nothing to type.
+// ═══════════════════════════════════════════════════════════
+function ensureManualSheet(ladderName) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var tabName = ladderName + ' - Manual';
+  if (ss.getSheetByName(tabName)) return; // already exists, leave it alone
+  buildManualSheet(ladderName);
+}
+
+function buildManualSheet(ladderName) {
+  var ladder = getLadderByName(ladderName);
+  if (!ladder) throw new Error('Ladder not found: ' + ladderName);
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var tabName = ladderName + ' - Manual';
+  var existing = ss.getSheetByName(tabName);
+  if (existing) ss.deleteSheet(existing);
+  var sheet = ss.insertSheet(tabName);
+
+  // Escape any apostrophes in the ladder name (e.g. "Men's") by doubling them,
+  // otherwise the single-quoted sheet reference in the formulas breaks.
+  var matchesTab = "'" + ladderName.replace(/'/g, "''") + " - Matches'";
+  var rounds = ladder.rounds;
+  var players = ladder.players;
+  var numPlayers = players.length;
+
+  // ── Header row (games-only layout) ───────────────────────
+  var headers = ['Rank', 'Player', 'Games Win %'];
+  for (var r = 1; r <= rounds; r++) {
+    headers.push('R' + r + ' Games W', 'R' + r + ' Games L');
+  }
+  headers.push('Total Games W', 'Total Games L');
+
+  var totalCols = headers.length;
+  var totalStartCol = 4 + rounds * 2; // 1-indexed column of "Total Games W"
+
+  sheet.getRange(1, 1, 1, totalCols)
+    .setValues([headers])
+    .setFontWeight('bold')
+    .setBackground('#052d54')
+    .setFontColor('#ffffff')
+    .setHorizontalAlignment('center');
+  sheet.setFrozenRows(1);
+  sheet.setFrozenColumns(2);
+
+  if (numPlayers === 0) return sheet;
+
+  var lastRow = numPlayers + 1;
+  var rankColLetter = 'C'; // Games Win %
+
+  // ── Build 2D row array of values + formulas ──────────────
+  var rowData = [];
+  for (var i = 0; i < numPlayers; i++) {
+    var rowNum = i + 2;
+    var row = new Array(totalCols);
+    var pCell = '$B' + rowNum;
+
+    // Col 1: Rank (by Games Win %)
+    row[0] = '=IFERROR(RANK(' + rankColLetter + rowNum +
+             ',$' + rankColLetter + '$2:$' + rankColLetter + '$' + lastRow + '),"")';
+
+    // Col 2: Player name (literal)
+    row[1] = players[i];
+
+    // Per-round SUMIFS formulas (games only)
+    // Matches tab columns: B=Round, C=Winner, D=Learner,
+    //                      G=WinnerGames, H=LearnerGames
+    for (var rd = 1; rd <= rounds; rd++) {
+      var base = 3 + (rd - 1) * 2; // 0-indexed slot in row array
+
+      // Games W for this player this round
+      row[base] =
+        '=SUMIFS(' + matchesTab + '!G:G,' + matchesTab + '!B:B,' + rd + ',' + matchesTab + '!C:C,' + pCell + ')' +
+        '+SUMIFS(' + matchesTab + '!H:H,' + matchesTab + '!B:B,' + rd + ',' + matchesTab + '!D:D,' + pCell + ')';
+
+      // Games L for this player this round
+      row[base + 1] =
+        '=SUMIFS(' + matchesTab + '!H:H,' + matchesTab + '!B:B,' + rd + ',' + matchesTab + '!C:C,' + pCell + ')' +
+        '+SUMIFS(' + matchesTab + '!G:G,' + matchesTab + '!B:B,' + rd + ',' + matchesTab + '!D:D,' + pCell + ')';
+    }
+
+    // Totals — sum the interleaved round columns
+    var gamesW = [], gamesL = [];
+    for (var rd2 = 1; rd2 <= rounds; rd2++) {
+      var b = 4 + (rd2 - 1) * 2;
+      gamesW.push(colLetter(b) + rowNum);
+      gamesL.push(colLetter(b + 1) + rowNum);
+    }
+    row[totalStartCol - 1] = '=' + gamesW.join('+'); // Total Games W
+    row[totalStartCol]     = '=' + gamesL.join('+'); // Total Games L
+
+    // Cell refs to the totals we just wrote
+    var tgwCell = colLetter(totalStartCol)     + rowNum;
+    var tglCell = colLetter(totalStartCol + 1) + rowNum;
+
+    // Col 3: Games Win %
+    row[2] = '=IFERROR(' + tgwCell + '/(' + tgwCell + '+' + tglCell + '),0)';
+
+    rowData.push(row);
+  }
+
+  sheet.getRange(2, 1, numPlayers, totalCols).setValues(rowData);
+
+  // ── Formatting ──────────────────────────────────────────
+  sheet.getRange(2, 3, numPlayers, 1).setNumberFormat('0.00%');
+  sheet.setColumnWidth(1, 55);
+  sheet.setColumnWidth(2, 170);
+  sheet.setColumnWidth(3, 100);
+  for (var c = 4; c < totalStartCol; c++) {
+    sheet.setColumnWidth(c, 60);
+  }
+  for (var c2 = totalStartCol; c2 < totalStartCol + 2; c2++) {
+    sheet.setColumnWidth(c2, 90);
+  }
+
+  return sheet;
+}
+
+// Run this from the Apps Script editor any time you add/remove
+// players in the Ladders config, or add a new ladder.
+function setupAllManualWorksheets() {
+  var ladders = getLaddersConfig();
+  var count = 0;
+  for (var i = 0; i < ladders.length; i++) {
+    if (!ladders[i].active) continue;
+    buildManualSheet(ladders[i].name);
+    count++;
+  }
+  SpreadsheetApp.getUi().alert(
+    'Rebuilt ' + count + ' manual worksheet(s).\n\n' +
+    'Each active ladder now has a "<Ladder> - Manual" tab with ' +
+    'live formulas pulling from its Matches tab.'
+  );
+}
+
+// Convert 1-indexed column number to A1 letter (A, B, ..., Z, AA, AB, ...)
+function colLetter(col) {
+  var letter = '';
+  while (col > 0) {
+    var mod = (col - 1) % 26;
+    letter = String.fromCharCode(65 + mod) + letter;
+    col = Math.floor((col - mod) / 26);
+  }
+  return letter;
 }

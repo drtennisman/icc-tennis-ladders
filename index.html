@@ -692,7 +692,7 @@
     function populatePlayers() {
       ['winnerSelect', 'loserSelect'].forEach(id => {
         const sel = document.getElementById(id);
-        sel.innerHTML = '<option value="">Select player...</option>';
+        sel.innerHTML = '<option value="">Select player...</option><option value="Sub">Sub</option>';
         if (!currentLadder) return;
         currentLadder.players.forEach(name => {
           const opt = document.createElement('option');
