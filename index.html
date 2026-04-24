@@ -372,6 +372,47 @@
       letter-spacing: 0.4px;
     }
 
+    /* ── Round status ── */
+    .round-status-header {
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      font-size: 17px;
+      font-weight: 800;
+      text-align: center;
+    }
+    .round-status-header.pending {
+      background: #fff4e5;
+      color: #b85c00;
+    }
+    .round-status-header.complete {
+      background: #e6f4ea;
+      color: #1e7e34;
+    }
+
+    .pending-section {
+      background: white;
+      border-radius: 14px;
+      padding: 16px 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .pending-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 12px;
+    }
+    .pending-player {
+      font-size: 15px;
+      font-weight: 700;
+      color: #052d54;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .pending-player:last-child { border-bottom: none; }
+
     /* ── Matchup cards ── */
     .matchup-card {
       background: white;
@@ -578,9 +619,9 @@
   <!-- ══ MATCHUPS TAB ══ -->
   <div class="tab" id="tab-matchups">
     <div class="container">
-      <button class="refresh-btn" onclick="loadMatchups()">Refresh Matchups</button>
+      <button class="refresh-btn" onclick="loadMatchups()">Refresh Status</button>
       <div id="matchupsList">
-        <div class="loading-text">Tap refresh to load matchups</div>
+        <div class="loading-text">Tap refresh to load round status</div>
       </div>
     </div>
   </div>
@@ -669,6 +710,18 @@
       populatePlayers();
       applyFormatUI();
       resetForm();
+      autoSelectCurrentRound();
+    }
+
+    async function autoSelectCurrentRound() {
+      if (!currentLadder) return;
+      try {
+        const data = await fetchLadderData();
+        const sel = document.getElementById('roundSelect');
+        if (data.currentRound && sel.querySelector(`option[value="${data.currentRound}"]`)) {
+          sel.value = data.currentRound;
+        }
+      } catch (e) { /* non-fatal */ }
     }
 
     function applyFormatUI() {
@@ -933,36 +986,40 @@
       container.innerHTML = '<div class="loading-text">Loading...</div>';
       try {
         const data = await fetchLadderData();
-        renderMatchups(data.matchups);
+        renderMatchups(data.currentRound, data.pendingPlayers, data.rounds);
       } catch (err) {
-        container.innerHTML = '<div class="loading-text">Could not load matchups.</div>';
+        container.innerHTML = '<div class="loading-text">Could not load round status.</div>';
         console.error(err);
       }
     }
 
-    function renderMatchups(matchups) {
+    function renderMatchups(currentRound, pendingPlayers, totalRounds) {
       const container = document.getElementById('matchupsList');
-      if (!matchups || matchups.length === 0) {
-        container.innerHTML = '<div class="loading-text">No matchups yet.</div>';
-        return;
+
+      const allDone = pendingPlayers && pendingPlayers.length === 0;
+      const roundComplete = allDone && currentRound < totalRounds;
+      const ladderComplete = allDone && currentRound >= totalRounds;
+
+      let statusHtml;
+      if (ladderComplete) {
+        statusHtml = `<div class="round-status-header complete">Round ${currentRound} — Ladder Complete!</div>`;
+      } else if (roundComplete) {
+        statusHtml = `<div class="round-status-header complete">Round ${currentRound} — Complete</div>`;
+      } else {
+        const count = pendingPlayers ? pendingPlayers.length : 0;
+        statusHtml = `<div class="round-status-header pending">Round ${currentRound} — ${count} player${count !== 1 ? 's' : ''} still pending</div>`;
       }
 
-      container.innerHTML = matchups.map((m, i) => `
-        <div class="matchup-card">
-          <div class="matchup-label">Match ${i + 1}</div>
-          <div class="matchup-players">
-            <div class="matchup-player">
-              <div class="matchup-rank">#${m.rank1}</div>
-              <div class="matchup-name">${escapeHtml(m.player1)}</div>
-            </div>
-            <div class="matchup-vs">vs</div>
-            <div class="matchup-player">
-              <div class="matchup-rank">#${m.rank2}</div>
-              <div class="matchup-name">${escapeHtml(m.player2)}</div>
-            </div>
-          </div>
-        </div>
-      `).join('');
+      let pendingHtml = '';
+      if (!allDone && pendingPlayers && pendingPlayers.length > 0) {
+        pendingHtml = `
+          <div class="pending-section">
+            <div class="pending-title">Still need to play:</div>
+            ${pendingPlayers.map(p => `<div class="pending-player">${escapeHtml(p)}</div>`).join('')}
+          </div>`;
+      }
+
+      container.innerHTML = statusHtml + pendingHtml;
     }
 
     async function loadRecent() {

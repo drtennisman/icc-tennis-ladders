@@ -404,6 +404,34 @@ function calculateStandings(ladderName) {
   recent.reverse();
   var recentMatches = recent.slice(0, 15);
 
+  // Current round + pending players
+  var numPairs = Math.floor(ladder.players.length / 2);
+  var matchesPerRound = {};
+  var playersPerRound = {};
+  // Use all rows (recent is reversed; re-scan stats which used original rows order)
+  // Re-derive from recent (reversed back) — easier to just use the stats loop data we already have
+  // Walk recent in reverse to get original order
+  var allRecent = recent.slice().reverse();
+  for (var ri = 0; ri < allRecent.length; ri++) {
+    var rm = allRecent[ri];
+    var rnd = Number(rm.round);
+    if (!rnd) continue;
+    matchesPerRound[rnd] = (matchesPerRound[rnd] || 0) + 1;
+    if (!playersPerRound[rnd]) playersPerRound[rnd] = {};
+    playersPerRound[rnd][rm.winner]  = true;
+    playersPerRound[rnd][rm.learner] = true;
+  }
+
+  var currentRound = 1;
+  for (var rn = 1; rn <= ladder.rounds; rn++) {
+    var cnt = matchesPerRound[rn] || 0;
+    if (cnt < numPairs) { currentRound = rn; break; }
+    if (rn === ladder.rounds) currentRound = ladder.rounds; // all rounds done
+  }
+
+  var playedNow = playersPerRound[currentRound] || {};
+  var pendingPlayers = ladder.players.filter(function(p) { return !playedNow[p]; });
+
   return {
     status: 'ok',
     ladder: ladderName,
@@ -411,7 +439,9 @@ function calculateStandings(ladderName) {
     rounds: ladder.rounds,
     standings: standings,
     matchups: matchups,
-    recent: recentMatches
+    recent: recentMatches,
+    currentRound: currentRound,
+    pendingPlayers: pendingPlayers
   };
 }
 
