@@ -734,12 +734,14 @@
       const sel = document.getElementById('roundSelect');
       sel.innerHTML = '<option value="">Select round...</option>';
       if (!currentLadder) return;
+      const savedRound = Number(localStorage.getItem('icc_current_round_' + currentLadder.name));
       for (let i = 1; i <= currentLadder.rounds; i++) {
         const opt = document.createElement('option');
         opt.value = i;
-        opt.textContent = 'Round ' + i;
+        opt.textContent = savedRound === i ? 'Round ' + i + ' (current)' : 'Round ' + i;
         sel.appendChild(opt);
       }
+      if (savedRound) sel.value = savedRound;
     }
 
     function populatePlayers() {
@@ -880,6 +882,7 @@
           body: JSON.stringify(payload)
         });
 
+        localStorage.setItem('icc_current_round_' + currentLadder.name, Number(round));
         showStatus(`Logged: ${winner} def. ${loser} ${displayScore}`, 'success');
         resetForm();
 
