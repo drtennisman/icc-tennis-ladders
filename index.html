@@ -604,7 +604,7 @@
 
         <div class="field">
           <label>Round</label>
-          <select id="roundSelect" onchange="checkFormReady()">
+          <select id="roundSelect" onchange="onRoundChange()">
             <option value="">Select round...</option>
           </select>
         </div>
@@ -867,6 +867,19 @@
       loserSel.value  = savedLoser;
     }
 
+    function onRoundChange() {
+      const sel = document.getElementById('roundSelect');
+      const round = Number(sel.value);
+      if (currentLadder && round) {
+        localStorage.setItem('icc_current_round_' + currentLadder.name, round);
+        Array.from(sel.options).forEach(opt => {
+          const n = Number(opt.value);
+          if (n) opt.textContent = 'Round ' + n + (n === round ? ' (current)' : '');
+        });
+      }
+      checkFormReady();
+    }
+
     function onWinnerChange() {
       const sel = document.getElementById('winnerSelect');
       sel.className = sel.value ? 'winner-active' : '';
@@ -1054,7 +1067,7 @@
     }
 
     function resetForm() {
-      document.getElementById('roundSelect').value = '';
+      populateRounds(); // rebuild with updated (current) label
       const winnerSel = document.getElementById('winnerSelect');
       const loserSel  = document.getElementById('loserSelect');
       winnerSel.value = ''; winnerSel.className = '';
