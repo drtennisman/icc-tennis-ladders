@@ -491,6 +491,95 @@
       letter-spacing: 1px;
       margin: 18px 4px 10px;
     }
+
+    /* ── Winner/Loser select colors ── */
+    select.winner-active {
+      border-color: #28a745 !important;
+      background-color: #f0fff4;
+      color: #155724;
+    }
+    select.loser-active {
+      border-color: #dc3545 !important;
+      background-color: #fff5f5;
+      color: #7b1a1a;
+    }
+
+    /* ── Confirm modal ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .modal-box {
+      background: white;
+      border-radius: 18px;
+      padding: 24px 20px 20px;
+      width: 100%;
+      max-width: 360px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+    }
+    .modal-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #052d54;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      text-align: center;
+      margin-bottom: 18px;
+    }
+    .modal-match {
+      text-align: center;
+      padding: 16px 0;
+      border-top: 1px solid #f0f0f0;
+      border-bottom: 1px solid #f0f0f0;
+      margin-bottom: 18px;
+    }
+    .modal-player-tag {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 2px;
+    }
+    .modal-player-name {
+      font-size: 19px;
+      font-weight: 800;
+      margin-bottom: 2px;
+      word-break: break-word;
+    }
+    .modal-winner-tag  { color: #28a745; }
+    .modal-loser-tag   { color: #dc3545; }
+    .modal-winner-name { color: #155724; }
+    .modal-loser-name  { color: #7b1a1a; }
+    .modal-def { font-size: 11px; color: #bbb; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin: 10px 0; }
+    .modal-score { font-size: 30px; font-weight: 800; color: #052d54; margin: 12px 0 4px; letter-spacing: 2px; }
+    .modal-round-tag { font-size: 11px; color: #aaa; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .modal-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .modal-cancel-btn {
+      padding: 14px;
+      background: #f5f5f5;
+      color: #555;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .modal-confirm-btn {
+      padding: 14px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -515,21 +604,21 @@
 
         <div class="field">
           <label>Round</label>
-          <select id="roundSelect">
+          <select id="roundSelect" onchange="checkFormReady()">
             <option value="">Select round...</option>
           </select>
         </div>
 
         <div class="field">
           <label>Winning Player</label>
-          <select id="winnerSelect" onchange="updateScorePreview()">
+          <select id="winnerSelect" onchange="onWinnerChange()">
             <option value="">Select player...</option>
           </select>
         </div>
 
         <div class="field">
           <label>Learning Player</label>
-          <select id="loserSelect" onchange="updateScorePreview()">
+          <select id="loserSelect" onchange="onLoserChange()">
             <option value="">Select player...</option>
           </select>
         </div>
@@ -554,13 +643,13 @@
           <label>Set Scores</label>
           <div class="set-row">
             <div class="set-label">Set 1</div>
-            <select class="set-input" id="set1Winner" onchange="updateScorePreview()">
+            <select class="set-input" id="set1Winner" onchange="updateScorePreview(); checkFormReady()">
               <option value="">W</option>
               <option>0</option><option>1</option><option>2</option><option>3</option>
               <option>4</option><option>5</option><option>6</option><option>7</option>
             </select>
             <span class="set-dash">–</span>
-            <select class="set-input" id="set1Learner" onchange="updateScorePreview()">
+            <select class="set-input" id="set1Learner" onchange="updateScorePreview(); checkFormReady()">
               <option value="">L</option>
               <option>0</option><option>1</option><option>2</option><option>3</option>
               <option>4</option><option>5</option><option>6</option><option>7</option>
@@ -568,13 +657,13 @@
           </div>
           <div class="set-row">
             <div class="set-label">Set 2</div>
-            <select class="set-input" id="set2Winner" onchange="updateScorePreview()">
+            <select class="set-input" id="set2Winner" onchange="updateScorePreview(); checkFormReady()">
               <option value="">W</option>
               <option>0</option><option>1</option><option>2</option><option>3</option>
               <option>4</option><option>5</option><option>6</option><option>7</option>
             </select>
             <span class="set-dash">–</span>
-            <select class="set-input" id="set2Learner" onchange="updateScorePreview()">
+            <select class="set-input" id="set2Learner" onchange="updateScorePreview(); checkFormReady()">
               <option value="">L</option>
               <option>0</option><option>1</option><option>2</option><option>3</option>
               <option>4</option><option>5</option><option>6</option><option>7</option>
@@ -582,13 +671,13 @@
           </div>
           <div class="set-row">
             <div class="set-label">Set 3 <span class="set-optional">(if played)</span></div>
-            <select class="set-input" id="set3Winner" onchange="updateScorePreview()">
+            <select class="set-input" id="set3Winner" onchange="updateScorePreview(); checkFormReady()">
               <option value="">W</option>
               <option>0</option><option>1</option><option>2</option><option>3</option>
               <option>4</option><option>5</option><option>6</option><option>7</option>
             </select>
             <span class="set-dash">–</span>
-            <select class="set-input" id="set3Learner" onchange="updateScorePreview()">
+            <select class="set-input" id="set3Learner" onchange="updateScorePreview(); checkFormReady()">
               <option value="">L</option>
               <option>0</option><option>1</option><option>2</option><option>3</option>
               <option>4</option><option>5</option><option>6</option><option>7</option>
@@ -601,7 +690,7 @@
         </div>
       </div>
 
-      <button class="submit-btn" id="submitBtn" onclick="submitResult()">Submit Result</button>
+      <button class="submit-btn" id="submitBtn" onclick="submitResult()" disabled>Submit Result</button>
       <div class="status" id="statusMsg"></div>
     </div>
   </div>
@@ -665,6 +754,8 @@
     let ladders = [];              // [{name, rounds, players}]
     let currentLadder = null;      // the selected ladder object
     let selectedLoserScore = null;
+    let pendingPayload = null;
+    let pendingDisplayScore = null;
 
     // ── Init ─────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
@@ -745,17 +836,61 @@
     }
 
     function populatePlayers() {
-      ['winnerSelect', 'loserSelect'].forEach(id => {
-        const sel = document.getElementById(id);
-        sel.innerHTML = '<option value="">Select player...</option><option value="Sub">Sub</option>';
-        if (!currentLadder) return;
+      const winnerSel = document.getElementById('winnerSelect');
+      const loserSel  = document.getElementById('loserSelect');
+      const savedWinner = winnerSel.value;
+      const savedLoser  = loserSel.value;
+
+      // Winner list: exclude current loser selection
+      winnerSel.innerHTML = '<option value="">Select winner...</option>' +
+        (savedLoser !== 'Sub' ? '<option value="Sub">Sub</option>' : '');
+      // Loser list: exclude current winner selection
+      loserSel.innerHTML  = '<option value="">Select learner...</option>' +
+        (savedWinner !== 'Sub' ? '<option value="Sub">Sub</option>' : '');
+
+      if (currentLadder) {
         currentLadder.players.forEach(name => {
-          const opt = document.createElement('option');
-          opt.value = name;
-          opt.textContent = name;
-          sel.appendChild(opt);
+          if (name !== savedLoser) {
+            const opt = document.createElement('option');
+            opt.value = name; opt.textContent = name;
+            winnerSel.appendChild(opt);
+          }
+          if (name !== savedWinner) {
+            const opt = document.createElement('option');
+            opt.value = name; opt.textContent = name;
+            loserSel.appendChild(opt);
+          }
         });
-      });
+      }
+
+      winnerSel.value = savedWinner;
+      loserSel.value  = savedLoser;
+    }
+
+    function onWinnerChange() {
+      const sel = document.getElementById('winnerSelect');
+      sel.className = sel.value ? 'winner-active' : '';
+      populatePlayers();
+      updateScorePreview();
+      checkFormReady();
+    }
+
+    function onLoserChange() {
+      const sel = document.getElementById('loserSelect');
+      sel.className = sel.value ? 'loser-active' : '';
+      populatePlayers();
+      updateScorePreview();
+      checkFormReady();
+    }
+
+    function checkFormReady() {
+      if (!currentLadder) { document.getElementById('submitBtn').disabled = true; return; }
+      const round  = document.getElementById('roundSelect').value;
+      const winner = document.getElementById('winnerSelect').value;
+      const loser  = document.getElementById('loserSelect').value;
+      const isBo3  = currentLadder.format === 'best-of-3';
+      const scoreReady = isBo3 ? readSetInputs().length >= 2 : selectedLoserScore !== null;
+      document.getElementById('submitBtn').disabled = !(round && winner && loser && scoreReady);
     }
 
     // ── Tab switching ─────────────────────────────────────────
@@ -772,6 +907,7 @@
       document.querySelectorAll('.score-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       updateScorePreview();
+      checkFormReady();
     }
 
     function updateScorePreview() {
@@ -808,8 +944,8 @@
       return out;
     }
 
-    // ── Submit result ─────────────────────────────────────────
-    async function submitResult() {
+    // ── Submit result (validates + shows confirm modal) ───────
+    function submitResult() {
       if (!currentLadder) { showStatus('Please pick a ladder.', 'error'); return; }
 
       const round  = document.getElementById('roundSelect').value;
@@ -841,23 +977,13 @@
         };
       } else {
         const sets = readSetInputs();
-        if (sets.length < 2) {
-          showStatus('Please enter at least 2 sets.', 'error');
-          return;
-        }
-        // Count sets won
+        if (sets.length < 2) { showStatus('Please enter at least 2 sets.', 'error'); return; }
         let wSets = 0, lSets = 0;
         for (const s of sets) {
-          if (s.winner === s.learner) {
-            showStatus('Set scores cannot be tied.', 'error');
-            return;
-          }
+          if (s.winner === s.learner) { showStatus('Set scores cannot be tied.', 'error'); return; }
           if (s.winner > s.learner) wSets++; else lSets++;
         }
-        if (wSets < 2) {
-          showStatus('The winning player must win at least 2 sets.', 'error');
-          return;
-        }
+        if (wSets < 2) { showStatus('The winning player must win at least 2 sets.', 'error'); return; }
         displayScore = sets.map(s => s.winner + '–' + s.learner).join(', ');
         payload = {
           ladder: currentLadder.name,
@@ -869,10 +995,35 @@
         };
       }
 
+      // Store and show confirmation modal
+      pendingPayload = payload;
+      pendingDisplayScore = displayScore;
+      document.getElementById('modalWinner').textContent = winner;
+      document.getElementById('modalLoser').textContent  = loser;
+      document.getElementById('modalScore').textContent  = displayScore;
+      document.getElementById('modalRound').textContent  = currentLadder.name + ' · Round ' + round;
+      document.getElementById('confirmModal').style.display = 'flex';
+    }
+
+    function closeConfirm() {
+      document.getElementById('confirmModal').style.display = 'none';
+      pendingPayload = null;
+      pendingDisplayScore = null;
+    }
+
+    async function confirmSubmit() {
+      if (!pendingPayload) return;
+      document.getElementById('confirmModal').style.display = 'none';
+
       const btn = document.getElementById('submitBtn');
       btn.disabled = true;
       btn.textContent = 'Submitting...';
       showStatus('Submitting...', 'loading');
+
+      const payload = pendingPayload;
+      const displayScore = pendingDisplayScore;
+      pendingPayload = null;
+      pendingDisplayScore = null;
 
       try {
         await fetch(APPS_SCRIPT_URL, {
@@ -882,16 +1033,16 @@
           body: JSON.stringify(payload)
         });
 
-        localStorage.setItem('icc_current_round_' + currentLadder.name, Number(round));
-        showStatus(`Logged: ${winner} def. ${loser} ${displayScore}`, 'success');
+        localStorage.setItem('icc_current_round_' + currentLadder.name, payload.round);
+        showStatus(`Logged: ${payload.winner} def. ${payload.learner} ${displayScore}`, 'success');
         resetForm();
 
       } catch (err) {
         showStatus('Error submitting. Please try again.', 'error');
         console.error(err);
       } finally {
-        btn.disabled = false;
         btn.textContent = 'Submit Result';
+        checkFormReady();
       }
     }
 
@@ -904,8 +1055,11 @@
 
     function resetForm() {
       document.getElementById('roundSelect').value = '';
-      document.getElementById('winnerSelect').value = '';
-      document.getElementById('loserSelect').value = '';
+      const winnerSel = document.getElementById('winnerSelect');
+      const loserSel  = document.getElementById('loserSelect');
+      winnerSel.value = ''; winnerSel.className = '';
+      loserSel.value  = ''; loserSel.className  = '';
+      populatePlayers(); // restore full player lists
       selectedLoserScore = null;
       document.querySelectorAll('.score-btn').forEach(b => b.classList.remove('selected'));
       for (let i = 1; i <= 3; i++) {
@@ -916,6 +1070,7 @@
       document.getElementById('scorePreview').innerHTML = isBo3
         ? '<span class="dim">– , –</span>'
         : '<span class="dim">8 – ?</span>';
+      checkFormReady();
     }
 
     // ── Load standings / matchups / recent ────────────────────
@@ -1085,6 +1240,26 @@
       navigator.serviceWorker.register('sw.js').catch(() => {});
     }
   </script>
+
+  <!-- ══ Confirm Modal ══ -->
+  <div class="modal-overlay" id="confirmModal" style="display:none;">
+    <div class="modal-box">
+      <div class="modal-title">Confirm Match Result</div>
+      <div class="modal-match">
+        <div class="modal-player-tag modal-winner-tag">Winner</div>
+        <div class="modal-player-name modal-winner-name" id="modalWinner"></div>
+        <div class="modal-def">def.</div>
+        <div class="modal-player-tag modal-loser-tag">Learner</div>
+        <div class="modal-player-name modal-loser-name" id="modalLoser"></div>
+        <div class="modal-score" id="modalScore"></div>
+        <div class="modal-round-tag" id="modalRound"></div>
+      </div>
+      <div class="modal-buttons">
+        <button class="modal-cancel-btn" onclick="closeConfirm()">Cancel</button>
+        <button class="modal-confirm-btn" onclick="confirmSubmit()">Confirm ✓</button>
+      </div>
+    </div>
+  </div>
 
 </body>
 </html>
